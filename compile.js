@@ -1,40 +1,45 @@
-const path = require('path');
-const fs = require('fs');
-const solc = require('solc');
+const path = require("path");
+const fs = require("fs");
+const solc = require("solc");
 
-// Get the path to the Solidity file
-const inboxPath = path.resolve(__dirname, 'contracts', 'Inbox.sol');
+// Path to Inbox.sol
+const inboxPath = path.resolve(__dirname, "contracts", "Inbox.sol");
+const source = fs.readFileSync(inboxPath, "utf8");
 
-// Read the Solidity code from the file
-const source = fs.readFileSync(inboxPath, 'utf8');
-
-// Correct input format for Solidity compiler
+// Solidity compiler input format
 const input = {
-    language: 'Solidity',
-    sources: {
-        'Inbox.sol': {
-            content: source,
-        },
+  language: "Solidity",
+  sources: {
+    "Inbox.sol": {
+      content: source,
     },
-    settings: {
-        outputSelection: {
-            '*': {
-                '*': ['abi', 'evm.bytecode.object'], // Only selecting necessary outputs
-            },
-        },
+  },
+  settings: {
+    outputSelection: {
+      "*": {
+        "*": ["abi", "evm.bytecode.object"],
+      },
     },
+  },
 };
 
-// Compile the contract
-const output = JSON.parse(solc.compile(JSON.stringify(input)));
+// Compile contract
+const output = JSON.parse(solc.compile(source));
 
 
-// Extract compiled contract details
-const contract = output.contracts['Inbox.sol'].Inbox;
+if (!output.contracts || !output.contracts["Inbox.sol"] || !output.contracts["Inbox.sol"].Inbox) {
+  throw new Error("Compilation error: Contract not found!");
+}
 
-// Display ABI and bytecode
-console.log('ABI:', contract.abi);
-console.log('Bytecode:', contract.evm.bytecode.object);
+const { abi, evm } = output.contracts["Inbox.sol"].Inbox;
 
-// Export for deployment
-module.exports = contract;
+// Ensure bytecode is not empty
+if (!evm.bytecode.object || evm.bytecode.object.length === 0) {
+  throw new Error("Error: Compiled bytecode is empty!");
+}
+
+console.log("ABI:", abi);
+console.log("Bytecode:", evm.bytecode.object);
+
+// Export contract details
+module.exports = { abi, bytecode: evm.bytecode.object };
